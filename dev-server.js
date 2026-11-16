@@ -111,6 +111,49 @@ async function handleSeg(req, res, target) {
   }
 }
 
+async function handleDiag(req, res) {
+  var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+  var REF = "https://apiv1.yrain.top/";
+  var TEST_EP = "https://vip.dytt-tvs.com/20261001/39315_245403f0/index.m3u8";
+  var steps = [];
+  function add(name, ok, detail) { steps.push({ name: name, ok: ok, detail: detail }); }
+
+  try {
+    var r = await fetch("https://apiv1.yrain.top/tv.php?q=" + encodeURIComponent("熊出没"), { headers: { "user-agent": UA } });
+    var txt = await r.text(); var n = -1;
+    try { n = JSON.parse(txt).results.length; } catch (e) {}
+    add("1. tv.php search", r.status === 200 && n >= 0, "status=" + r.status + " results=" + n + " bytes=" + txt.length);
+  } catch (e) { add("1. tv.php search", false, String(e)); }
+
+  var cleanUrl = "";
+  try {
+    var r2 = await fetch("https://apiv1.yrain.top/m3u8.php?url=" + encodeURIComponent(TEST_EP), { headers: { "user-agent": UA, referer: REF } });
+    cleanUrl = (await r2.text()).trim();
+    add("2. m3u8.php clean url", r2.status === 200 && /^https?:/.test(cleanUrl), "status=" + r2.status + " url=" + cleanUrl.slice(0, 70));
+  } catch (e) { add("2. m3u8.php clean url", false, String(e)); }
+
+  var firstSeg = "";
+  try {
+    var r3 = await fetch(cleanUrl, { headers: { "user-agent": UA, referer: REF } });
+    var body = await r3.text();
+    var segLine = body.split("\n").map(function (s) { return s.trim(); }).find(function (s) { return s && s[0] !== "#"; });
+    firstSeg = segLine ? new URL(segLine, cleanUrl).href : "";
+    add("3. fetch clean m3u8", r3.status === 200 && !!firstSeg, "status=" + r3.status + " bytes=" + body.length);
+  } catch (e) { add("3. fetch clean m3u8", false, String(e)); }
+
+  try {
+    var r4 = await fetch(firstSeg, { headers: { "user-agent": UA, referer: REF } });
+    var buf = await r4.arrayBuffer();
+    add("4. fetch TS segment", r4.status === 200 && buf.byteLength > 1000, "status=" + r4.status + " bytes=" + buf.byteLength + " type=" + (r4.headers.get("content-type") || ""));
+  } catch (e) { add("4. fetch TS segment", false, String(e)); }
+
+  var rows = steps.map(function (s) {
+    return '<div class="s ' + (s.ok ? "ok" : "bad") + '"><b>' + (s.ok ? "OK" : "FAIL") + "</b> " + s.name + '<div class="d">' + String(s.detail).replace(/</g, "&lt;") + "</div></div>";
+  }).join("");
+  var html = '<!doctype html><html><head><meta charset="utf-8"><title>Diag</title><style>body{font:14px/1.6 monospace;background:#0b0b14;color:#ececf4;padding:24px}.s{padding:10px 14px;margin:8px 0;border-radius:8px;border:1px solid #2a2a3d}.ok{background:#14201a;border-color:#1f5a3a;color:#7ee}.bad{background:#201414;border-color:#5a1f1f;color:#e88}.d{color:#a0a0b8;word-break:break-all}</style></head><body><h1>播放链诊断</h1>' + rows + "</body></html>";
+  send(res, 200, html, { "content-type": "text/html; charset=utf-8" });
+}
+
 const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url, true);
   const pathname = parsed.pathname;
@@ -127,6 +170,7 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/api/search") return handleSearch(req, res, parsed.query.q);
   if (pathname === "/api/play") return handlePlay(req, res, parsed.query.url, parsed.query.direct === "1");
   if (pathname === "/api/seg") return handleSeg(req, res, parsed.query.url);
+  if (pathname === "/api/diag") return handleDiag(req, res);
 
   serveStatic(req, res, pathname);
 });

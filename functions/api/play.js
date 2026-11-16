@@ -29,7 +29,7 @@ export async function onRequestGet(context) {
     if (!direct) {
       const clean = await fetch(
         'https://apiv1.yrain.top/m3u8.php?url=' + encodeURIComponent(target),
-        { headers: { 'user-agent': UA, referer: REF } }
+        { headers: { 'user-agent': UA, referer: REF, accept: '*/*' } }
       );
       playlistUrl = (await clean.text()).trim();
       if (!playlistUrl.startsWith('http')) {
@@ -37,8 +37,9 @@ export async function onRequestGet(context) {
       }
     }
     const plResp = await fetch(playlistUrl, {
-      headers: { 'user-agent': UA, referer: REF },
-      cf: { cacheTtl: 300, cacheEverything: true },
+      method: 'GET',
+      headers: { 'user-agent': UA, referer: REF, accept: '*/*' },
+      redirect: 'follow',
     });
     let text = await plResp.text();
     const isMaster = text.includes("#EXT-X-STREAM-INF");

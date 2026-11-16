@@ -21,23 +21,29 @@ export async function onRequestGet(context) {
     return new Response('missing url', { status: 400, headers: corsHeaders() });
   }
   try {
-    const reqHeaders = { 'user-agent': UA, referer: REF };
+    const reqHeaders = { 'user-agent': UA, referer: REF, accept: '*/*' };
     const range = context.request.headers.get('range');
     if (range) reqHeaders['range'] = range;
     const resp = await fetch(target, {
+      method: 'GET',
       headers: reqHeaders,
-      cf: { cacheTtl: 86400, cacheEverything: true },
+      redirect: 'follow',
     });
+    const buf = await resp.arrayBuffer();
     const headers = corsHeaders({
       'content-type': resp.headers.get('content-type') || 'video/mp2t',
       'cache-control': 'public, max-age=86400, immutable',
+      'access-control-expose-headers': 'Content-Length, Content-Range',
     });
     const rh = resp.headers.get('content-range');
     if (rh) headers['content-range'] = rh;
-    const cl = resp.headers.get('content-length');
-    if (cl) headers['content-length'] = cl;
-    return new Response(resp.body, { status: resp.status, headers });
+    const cl = resp.headers.get('content-length') || String(buf.byteLength);
+    headers['content-length'] = cl;
+    return new Response(buf, { status: resp.status, headers });
   } catch (e) {
-    return new Response('upstream error', { status: 502, headers: corsHeaders() });
+    return new Response('upstream error: ' + String(e).slice(0, 200), {
+      status: 502,
+      headers: corsHeaders({ 'content-type': 'text/plain' }),
+    });
   }
 }
