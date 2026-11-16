@@ -1,0 +1,13 @@
+{
+  "name": "yingshi-search",
+  "version": "1.0.0",
+  "private": true,
+  "description": "影视搜 - 聚合影视搜索与在线播放，适配 Cloudflare Pages 部署",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

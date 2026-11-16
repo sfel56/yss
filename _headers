@@ -1,0 +1,16 @@
+/*
+  /css/*
+  Cache-Control: public, max-age=31536000, immutable
+
+  /js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+  /api/search
+  Cache-Control: public, max-age=600, s-maxage=1800
+
+  /api/seg
+  Cache-Control: public, max-age=86400, immutable
+
+  /*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer-when-downgrade
