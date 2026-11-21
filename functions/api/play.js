@@ -51,7 +51,9 @@ export async function onRequestGet(context) {
         if (isMaster) {
           return '/api/play?direct=1&url=' + encodeURIComponent(abs);
         }
-        return '/api/seg?url=' + encodeURIComponent(abs);
+        // 分片直连源站：源站会 403 拒绝 Cloudflare 出口 IP（The region has
+        // been denied），但允许浏览器直连且 CORS 为 *，故不再走 /api/seg 代理
+        return abs;
       } catch {
         return line;
       }
